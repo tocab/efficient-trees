@@ -62,7 +62,17 @@ class DecisionTreeClassifier:
         columns = data.collect_schema().names()
         feature_names = [col for col in columns if col != target_name]
 
-        self.tree = self._build_tree(data, feature_names, target_name, depth=0)
+        # Prepare data
+        data = data.select(pl.all().shrink_dtype()).with_columns(
+            pl.col(target_name).cast(pl.UInt64).shrink_dtype().alias(target_name)
+        )
+
+        unique_targets = data.select(target_name).unique()
+        if isinstance(unique_targets, pl.LazyFrame):
+            unique_targets = unique_targets.collect(streaming=self.streaming)
+        unique_targets = unique_targets[target_name].to_list()
+
+        self.tree = self._build_tree(data, feature_names, target_name, unique_targets, depth=0)
 
     def predict_many(self, data: Union[pl.DataFrame, pl.LazyFrame]) -> List[Union[int, float]]:
         """
@@ -123,6 +133,7 @@ class DecisionTreeClassifier:
         data: Union[pl.DataFrame, pl.LazyFrame],
         feature_names: list[str],
         target_name: str,
+        unique_targets: list[int],
         depth: int,
     ) -> dict:
         """
@@ -133,6 +144,7 @@ class DecisionTreeClassifier:
         :param data: The dataframe to evaluate.
         :param feature_names: Name of the feature columns.
         :param target_name: Name of the target column.
+        :param unique_targets: unique target values.
         :param depth: The current depth of the tree.
 
         :return: A dictionary representing the node.
@@ -143,22 +155,8 @@ class DecisionTreeClassifier:
         # Evaluate entropy per feature:
         information_gain_dfs = []
         for feature_name in feature_names:
-            feature_data = (
-                data.select([feature_name, target_name])
-                .filter(pl.col(feature_name).is_not_null())
-                .select(
-                    # Not streaming anymore
-                    pl.col(feature_name).shrink_dtype(),
-                    pl.col(target_name).cast(pl.UInt64).shrink_dtype(),
-                )
-            )
-
+            feature_data = data.select([feature_name, target_name]).filter(pl.col(feature_name).is_not_null())
             feature_data = feature_data.rename({feature_name: "feature_value"})
-
-            unique_targets = feature_data.select(target_name).unique()
-            if isinstance(unique_targets, pl.LazyFrame):
-                unique_targets = unique_targets.collect(streaming=self.streaming)
-            unique_targets = unique_targets[target_name]
 
             # No streaming (yet)
             information_gain_df = (
@@ -253,8 +251,10 @@ class DecisionTreeClassifier:
                         -1
                         * pl.sum_horizontal(
                             [
-                                pl.col(f"parent_proportion_class_{target_value}")
-                                * pl.col(f"parent_proportion_class_{target_value}").log(base=2)
+                                (
+                                    pl.col(f"parent_proportion_class_{target_value}")
+                                    * pl.col(f"parent_proportion_class_{target_value}").log(base=2)
+                                ).fill_nan(0.0)
                                 for target_value in unique_targets
                             ]
                         )
@@ -307,8 +307,8 @@ class DecisionTreeClassifier:
             left_df = data.filter(left_mask)
             right_df = data.filter(~left_mask)
 
-            left_subtree = self._build_tree(left_df, feature_names, target_name, depth + 1)
-            right_subtree = self._build_tree(right_df, feature_names, target_name, depth + 1)
+            left_subtree = self._build_tree(left_df, feature_names, target_name, unique_targets, depth + 1)
+            right_subtree = self._build_tree(right_df, feature_names, target_name, unique_targets, depth + 1)
 
             if isinstance(data, pl.LazyFrame):
                 target_distribution = (
