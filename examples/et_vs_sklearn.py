@@ -1,12 +1,13 @@
-import numpy as np
-from memory_profiler import memory_usage
-import matplotlib.pyplot as plt
-from sklearn.tree import DecisionTreeClassifier as SkLearnDecisionTreeClassifier
-from efficient_trees.tree import DecisionTreeClassifier as ETDecisionTreeClassifier
-import kagglehub
-import polars as pl
-import pandas as pd
 import multiprocessing
+
+import kagglehub
+import matplotlib.pyplot as plt
+import pandas as pd
+import polars as pl
+from memory_profiler import memory_usage
+from sklearn.tree import DecisionTreeClassifier as SkLearnDecisionTreeClassifier
+
+from efficient_trees.tree import DecisionTreeClassifier as ETDecisionTreeClassifier
 
 
 # Wrapper to measure memory usage over time
@@ -18,14 +19,7 @@ def measure_memory_usage(func, *args, **kwargs):
 # Example functions to benchmark
 def sklearn_tree(data_path):
     data = pd.read_parquet(data_path)
-    columns_to_exclude = [
-        "customer_ID",
-        "__index_level_0__",
-        "S_2",
-        "D_63",
-        "D_64",
-        "target"
-    ]
+    columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64", "target"]
     tree = SkLearnDecisionTreeClassifier(max_depth=4, criterion="entropy")
     tree.fit(data[[col for col in data.columns if col not in columns_to_exclude]], data["target"])
 
@@ -48,7 +42,7 @@ def efficient_tree(data_path):
 # Main benchmarking script
 def main():
     # Set this, otherwise it doesn't match well with polars.
-    multiprocessing.set_start_method('spawn')
+    multiprocessing.set_start_method("spawn")
     # Download latest version
     path = kagglehub.dataset_download("odins0n/amex-parquet")
     path += "/train_data.parquet"
@@ -63,8 +57,8 @@ def main():
 
     # Plot the results
     plt.figure(figsize=(10, 6))
-    plt.plot([val/10.0 for val in range(1, len(mem_sklearn)+1)], mem_sklearn, label="Scikit-Learn")
-    plt.plot([val/10.0 for val in range(1, len(mem_efficient)+1)], mem_efficient, label="Efficient-Trees")
+    plt.plot([val / 10.0 for val in range(1, len(mem_sklearn) + 1)], mem_sklearn, label="Scikit-Learn")
+    plt.plot([val / 10.0 for val in range(1, len(mem_efficient) + 1)], mem_efficient, label="Efficient-Trees")
     plt.xlabel("Time (s)")
     plt.ylabel("Memory Usage (MB)")
     plt.title("Memory Usage Over Time")
