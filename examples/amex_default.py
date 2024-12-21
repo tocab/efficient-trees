@@ -7,7 +7,6 @@ from examples.utils.utils import plot_tree
 
 # Download latest version
 path = kagglehub.dataset_download("odins0n/amex-parquet")
-
 data = pl.scan_parquet(path + "/train_data.parquet")
 
 columns_to_exclude = [
