@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "efficient-trees"
+version = "0.1.0"
+description = "A memory-efficient implementation of decision trees."
+authors = ["Tobias Cabanski <t.cabanski@posteo.de>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+polars = "*"
+python = "^3.12"
+
+[tool.poetry.dev-dependencies]
+numpy = "*"
+scikit-learn = "*"
+datasets = "*"
+matplotlib = "*"
+kagglehub = "*"
+pytest = "*"
+pytest-cov = "*"
+flake8 = "7.1.1"
+black = "24.10.0"
+pre-commit = "*"
+isort = "*"
+
+[tool.black]
+line-length = 120
+target-version = ["py312"]
+
+[tool.isort]
+profile = "black"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
