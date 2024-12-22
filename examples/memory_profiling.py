@@ -46,12 +46,16 @@ def train_efficient_tree(data_path):
 def train_lightgbm(data_path):
     data = pl.scan_parquet(data_path)
     columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64"]
+
+    # It is in general a big pain to make lightgbm compatible with arrow. If anything goes wrong during data
+    # preparation, lightgbm defaults to transforming the input data into a csr_matrix which is expensive.
+    # To make it run with pyarrow, these requirements need to be given:
+    # - pyarrow needs to be installed
+    # - cffi needs to be installed
+    # Internally, lightgbm will try to import these packages and fail silently if they are not available.
     lgbm_dataset = lgbm.Dataset(
         data=data.drop(columns_to_exclude + ["target"]).collect(streaming=True).to_arrow(),
-        # Despite the lightgbm docs say you can pass a pyarrow array here, this doesn't work:
-        # - label=pyarrow.array(data.select("target").collect(streaming=True)["target"])
-        # - label=data.select("target").collect(streaming=True)["target"].to_arrow()
-        label=data.select("target").collect(streaming=True)["target"].to_numpy(),
+        label=data.select("target").collect(streaming=True)["target"].to_arrow(),
         free_raw_data=True,
     )
     params = {"objective": "binary", "max_depth": 4}

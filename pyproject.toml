@@ -23,7 +23,9 @@ flake8 = "7.1.1"
 black = "24.10.0"
 pre-commit = "*"
 isort = "*"
-pandas = {version="*", extras=["pyarrow"]}
+pandas = "*"
+pyarrow = "*"
+cffi = "*"
 
 [tool.black]
 line-length = 120
