@@ -47,15 +47,25 @@ The following plot demonstrates the memory usage of different frameworks over ti
 1. **Efficient-Trees**: Our implementation using a Polars backend.
 2. **Scikit-Learn**: The standard decision tree implementation from scikit-learn.
 
-![Memory Usage Comparison](examples/images/sklearn_vs_et.png)
+![Memory Usage Comparison](examples/images/memory_profiles.png)
 
 ### Key Observations
+
 1. **Memory Usage**:
-   - **Efficient-Trees**: Consumes significantly less memory throughout the training process, showcasing its memory-efficient design. The flat memory profile indicates stable memory usage over time.
-   - **Scikit-Learn**: Shows a higher peak memory usage compared to Efficient-Trees. The spikes correspond to memory allocation during data loading.
+   - **Efficient-Trees (Lazy Execution)**: Uses the least memory among all tested approaches, with a peak memory usage of approximately 8 GB. The lazy execution model efficiently processes data without fully loading it into memory, making it ideal for large-scale or memory-constrained scenarios.
+   - **Efficient-Trees (Non-Lazy Execution)**: Requires slightly more memory than the lazy execution variant, with a peak usage of around 12 GB. However, it still outperforms Scikit-Learn and LightGBM in terms of memory efficiency.
+   - **Scikit-Learn**: Peaks at about 20 GB of memory, which is significantly higher than Efficient-Trees in both lazy and non-lazy execution modes. The memory profile shows spikes during data loading and model fitting.
+   - **LightGBM**: The least memory-efficient approach, requiring approximately 50 GB of memory. Its high memory consumption makes it less suitable for memory-constrained environments.
 
 2. **Runtime**:
-   - **Efficient-Trees**: Achieves faster runtime due to the use of a multi-threaded backend powered by Polars. This allows it to leverage multiple CPU cores for parallel computation.
-   - **Scikit-Learn**: Has a noticeably longer runtime, likely because it uses a single-threaded implementation for decision tree training.
+   - **LightGBM**: The fastest algorithm overall, leveraging highly optimized code for gradient boosting. However, its speed comes at the cost of significantly higher memory usage.
+   - **Efficient-Trees (Non-Lazy Execution)**: The second fastest approach, benefiting from a multi-threaded backend powered by Polars. It strikes a balance between speed and memory usage, outperforming Scikit-Learn and the lazy execution variant.
+   - **Efficient-Trees (Lazy Execution)**: The third fastest approach, slightly slower than the non-lazy execution mode due to the overhead of lazy evaluation. However, its reduced memory usage makes it highly suitable for large datasets.
+   - **Scikit-Learn**: By far the slowest algorithm, with a runtime much longer than the other approaches. This is likely due to its single-threaded implementation, which cannot leverage modern multi-core processors effectively.
 
-This comparison highlights the efficiency of the **Efficient-Trees** implementation in terms of both memory consumption and runtime, making it suitable for large-scale datasets or memory-constrained environments.
+3. **Overall Insights**:
+   - **Efficient-Trees** demonstrates superior memory efficiency, particularly in the lazy execution mode, making it a strong choice for applications where memory constraints are a concern.
+   - While **LightGBM** is very good in speed, its high memory usage limits its applicability in low-memory environments.
+   - **Scikit-Learn**, while a well-established library, shows significant limitations in both speed and memory efficiency compared to the other approaches.
+
+This comparison shows the capabilities of **Efficient-Trees**, which provides a range of execution modes to optimize for different trade-offs between speed and memory usage. Its lazy execution mode is particularly valuable for large-scale datasets, while the non-lazy mode balances performance and resource consumption.

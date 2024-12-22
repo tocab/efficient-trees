@@ -13,6 +13,7 @@ python = "^3.12"
 [tool.poetry.dev-dependencies]
 numpy = "*"
 scikit-learn = "*"
+lightgbm = "*"
 memory-profiler = "*"
 matplotlib = "*"
 kagglehub = "*"

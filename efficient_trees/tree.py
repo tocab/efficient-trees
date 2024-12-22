@@ -152,6 +152,9 @@ class DecisionTreeClassifier:
         if self.max_depth is not None and depth >= self.max_depth:
             return {"type": "leaf", "value": self.get_majority_class(data, target_name)}
 
+        # Make data lazy here to avoid that it is evaluated in each loop iteration.
+        data = data.lazy()
+
         # Evaluate entropy per feature:
         information_gain_dfs = []
         for feature_name in feature_names:
