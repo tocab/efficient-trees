@@ -44,8 +44,10 @@ print(predictions)
 The following plot demonstrates the memory usage of different frameworks over time when training a decision tree on a kaggle dataset. 
 
 ### Frameworks Compared
-1. **Efficient-Trees**: Our implementation using a Polars backend.
-2. **Scikit-Learn**: The standard decision tree implementation from scikit-learn.
+
+1. **Efficient-Trees**: A custom implementation using a Polars backend, offering both lazy and non-lazy execution modes to balance memory efficiency and runtime performance.
+2. **Scikit-Learn**: The standard decision tree implementation from scikit-learn, widely used for traditional machine learning tasks.
+3. **LightGBM**: A gradient boosting framework optimized for speed and performance, known for its scalability but with higher memory requirements.
 
 ![Memory Usage Comparison](examples/images/memory_profiles.png)
 
