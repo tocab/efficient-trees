@@ -96,7 +96,7 @@ class DecisionTreeClassifier:
         # Convert predictions to a list
         if isinstance(predictions, pl.LazyFrame):
             # Despite the execution plans says there is no streaming, using streaming here significantly
-            # increases the performance and decreases the memory foodprint.
+            # increases the performance and decreases the memory food print.
             predictions = predictions.collect(streaming=True)
 
         predictions = predictions["prediction"].to_list()
@@ -293,7 +293,10 @@ class DecisionTreeClassifier:
 
         if isinstance(information_gain_dfs[0], pl.LazyFrame):
             information_gain_dfs = pl.collect_all(information_gain_dfs, streaming=self.streaming)
-        information_gain_dfs = pl.concat(information_gain_dfs).sort("information_gain", descending=True)
+
+        information_gain_dfs = pl.concat(information_gain_dfs, how="vertical_relaxed").sort(
+            "information_gain", descending=True
+        )
 
         information_gain = 0
         if len(information_gain_dfs) > 0:
