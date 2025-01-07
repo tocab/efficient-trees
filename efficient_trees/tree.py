@@ -15,11 +15,7 @@ class DecisionTreeClassifier:
     A decision tree classifier using Polars as backend.
     """
 
-    def __init__(
-        self,
-        streaming=False,
-        max_depth=None,
-    ):
+    def __init__(self, streaming=False, max_depth=None, categorical_columns=None):
         """
         Init method.
 
@@ -28,6 +24,8 @@ class DecisionTreeClassifier:
         """
         self.max_depth = max_depth
         self.streaming = streaming
+        self.categorical_columns = categorical_columns
+        self.categorical_mappings = None
         self.tree = None
 
     def save_model(self, path: str) -> None:
@@ -39,7 +37,11 @@ class DecisionTreeClassifier:
 
         # Save as pickle
         with open(path, "wb") as f:
-            pickle.dump(self.tree, f, protocol=pickle.HIGHEST_PROTOCOL)
+            pickle.dump(
+                {"tree": self.tree, "categorical_mappings": self.categorical_mappings},
+                f,
+                protocol=pickle.HIGHEST_PROTOCOL,
+            )
 
     def load_model(self, path: str) -> None:
         """
@@ -50,7 +52,21 @@ class DecisionTreeClassifier:
 
         # Load as pickle
         with open(path, "rb") as f:
-            self.tree = pickle.load(f)
+            loaded = pickle.load(f)
+            self.tree = loaded["tree"]
+            self.categorical_mappings = loaded["categorical_mappings"]
+
+    def apply_categorical_mappings(self, data: Union[pl.DataFrame, pl.LazyFrame]) -> Union[pl.DataFrame, pl.LazyFrame]:
+        """
+        Apply categorical mappings on input frame.
+
+        :param data: Polars DataFrame or LazyFrame with categorical columns.
+
+        :return: Polars DataFrame or LazyFrame with mapped categorical columns
+        """
+        return data.with_columns(
+            [pl.col(col).replace(self.categorical_mappings[col]).cast(pl.UInt32) for col in self.categorical_columns]
+        )
 
     def fit(self, data: Union[pl.DataFrame, pl.LazyFrame], target_name: str) -> None:
         """
@@ -62,10 +78,28 @@ class DecisionTreeClassifier:
         columns = data.collect_schema().names()
         feature_names = [col for col in columns if col != target_name]
 
-        # Prepare data
+        # Shrink dtypes
         data = data.select(pl.all().shrink_dtype()).with_columns(
             pl.col(target_name).cast(pl.UInt64).shrink_dtype().alias(target_name)
         )
+
+        # Prepare categorical columns with target encoding
+        if self.categorical_columns:
+            categorical_mappings = {}
+            for categorical_column in self.categorical_columns:
+                categorical_mappings[categorical_column] = {
+                    value: index
+                    for index, value in enumerate(
+                        data.lazy()
+                        .group_by(categorical_column)
+                        .agg(pl.col(target_name).mean().alias("avg"))
+                        .sort("avg")
+                        .collect(streaming=self.streaming)[categorical_column]
+                    )
+                }
+
+            self.categorical_mappings = categorical_mappings
+            data = self.apply_categorical_mappings(data)
 
         unique_targets = data.select(target_name).unique()
         if isinstance(unique_targets, pl.LazyFrame):
@@ -81,6 +115,8 @@ class DecisionTreeClassifier:
         :param data: Polars DataFrame or LazyFrame.
         :return: List of predicted target values.
         """
+        if self.categorical_mappings:
+            data = self.apply_categorical_mappings(data)
 
         def _predict_many(node, temp_data):
             if node["type"] == "node":
