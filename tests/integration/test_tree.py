@@ -1,3 +1,5 @@
+import itertools
+
 import polars as pl
 import pytest
 from sklearn.datasets import load_iris
@@ -17,6 +19,11 @@ def data():
     # data
     df_train = pl.DataFrame(X_train, schema=iris.feature_names).with_columns(target=pl.Series(y_train))
     df_test = pl.DataFrame(X_test, schema=iris.feature_names).with_columns(target=pl.Series(y_test))
+
+    # add dummy categorical feature
+    cycle = itertools.cycle([1, 2, 3])
+    df_train = df_train.with_columns(categorical_feature=pl.Series([cycle.__next__() for _ in range(len(df_train))]))
+    df_test = df_test.with_columns(categorical_feature=pl.Series([cycle.__next__() for _ in range(len(df_test))]))
 
     return df_train, df_test
 
@@ -39,12 +46,17 @@ def predictions():
 
 
 @pytest.mark.parametrize("is_lazy", [True, False])
-def test_tree(data, predictions, is_lazy):
+@pytest.mark.parametrize("use_categorical_feature", [True, False])
+def test_tree(data, predictions, is_lazy, use_categorical_feature):
     df_train, df_test = data
     if is_lazy:
         df_train = df_train.lazy()
         df_test = df_test.lazy()
     train_predictions, test_predictions = predictions
+
+    if not use_categorical_feature:
+        df_train = df_train.drop("categorical_feature")
+        df_test = df_test.drop("categorical_feature")
 
     decision_tree_classifier = DecisionTreeClassifier(max_depth=4)
     decision_tree_classifier.fit(df_train, "target")
