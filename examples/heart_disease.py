@@ -6,42 +6,16 @@ from efficient_trees.tree import DecisionTreeClassifier
 from examples.utils.utils import plot_tree
 
 # Download latest version
-path = kagglehub.dataset_download("oktayrdeki/heart-disease")
-data = pl.scan_csv(path + "/heart_disease.csv")
+path = kagglehub.dataset_download("colewelkins/cardiovascular-disease")
+data = pl.scan_csv(path + "/cardio_data_processed.csv")
 
-# map values in binary columns
-binary_columns = [
-    "Smoking",
-    "Family Heart Disease",
-    "Diabetes",
-    "High Blood Pressure",
-    "Low HDL Cholesterol",
-    "High LDL Cholesterol",
-    "Heart Disease Status",
-]
-target_name = "Heart Disease Status"
-data = data.with_columns([pl.col(col).replace({"Yes": 1, "No": 0}).cast(pl.Int8) for col in binary_columns])
+# drop columns that should not be used
+data = data.drop(["id", "age", "bp_category", "bp_category_encoded"])
+
+target_name = "cardio"
 
 # Define categorical columns
-categorical_columns = ["Gender", "Exercise Habits", "Alcohol Consumption", "Stress Level", "Sugar Consumption"]
-
-columns = (
-    [
-        "Age",
-        "Blood Pressure",
-        "Cholesterol Level",
-        "BMI",
-        "Sleep Hours",
-        "Triglyceride Level",
-        "Fasting Blood Sugar",
-        "CRP Level",
-        "Homocysteine Level",
-    ]
-    + binary_columns
-    + categorical_columns
-)
-
-data = data.select(columns)
+categorical_columns = ["gender", "cholesterol", "gluc", "smoke", "alco", "active"]
 
 data = data.collect().sample(fraction=1.0, shuffle=True)
 count_training_data = int(len(data) * 0.8)
@@ -50,7 +24,7 @@ training_data = data.slice(0, count_training_data)
 test_data = data.slice(count_training_data)
 
 tree = DecisionTreeClassifier(max_depth=8, streaming=True, categorical_columns=categorical_columns)
-tree.fit(training_data, target_name)
+tree.fit(training_data.lazy(), target_name)
 tree.save_model("decision_tree.pkl")
 plot_tree(tree.tree, "decision_tree_iris.pdf")
 
