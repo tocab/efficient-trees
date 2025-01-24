@@ -24,7 +24,7 @@ training_data = data.slice(0, count_training_data)
 test_data = data.slice(count_training_data)
 
 tree = DecisionTreeClassifier(max_depth=8, streaming=True, categorical_columns=categorical_columns)
-tree.fit(training_data.lazy(), target_name)
+tree.fit(training_data, target_name)
 tree.save_model("decision_tree.pkl")
 plot_tree(tree.tree, "decision_tree_iris.pdf")
 
