@@ -9,7 +9,7 @@ from efficient_trees.tree import DecisionTreeClassifier
 
 
 @pytest.fixture
-def data():
+def data(request):
     iris = load_iris()
     X, y = iris.data, iris.target
 
@@ -19,17 +19,23 @@ def data():
     # data
     df_train = pl.DataFrame(X_train, schema=iris.feature_names).with_columns(target=pl.Series(y_train))
     df_test = pl.DataFrame(X_test, schema=iris.feature_names).with_columns(target=pl.Series(y_test))
+    if request.param == "str":
+        df_train = df_train.with_columns(
+            pl.col("target")
+            .cast(pl.String, strict=False)
+            .replace({"0": "setosa", "1": "versicolor", "2": "virginica"})
+        )
+        df_test = df_test.with_columns(
+            pl.col("target")
+            .cast(pl.String, strict=False)
+            .replace({"0": "setosa", "1": "versicolor", "2": "virginica"})
+        )
 
     # add dummy categorical feature
     cycle = itertools.cycle([1, 2, 3])
     df_train = df_train.with_columns(categorical_feature=pl.Series([cycle.__next__() for _ in range(len(df_train))]))
     df_test = df_test.with_columns(categorical_feature=pl.Series([cycle.__next__() for _ in range(len(df_test))]))
 
-    return df_train, df_test
-
-
-@pytest.fixture
-def predictions():
     # fmt: off
     train_predictions = [
         1, 2, 2, 1, 2, 1, 2, 1, 0, 2, 1, 0, 0, 1, 1, 2, 1, 0, 0, 1, 0, 1, 2, 0, 1, 2, 0, 2, 2, 1, 1, 2, 1, 0, 1, 2, 0,
@@ -40,19 +46,22 @@ def predictions():
         1, 0, 2, 1, 1, 0, 1, 2, 1, 1, 2, 0, 0, 0, 0, 1, 2, 1, 1, 2, 0, 2, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 1, 0, 0, 2,
         1, 0, 0, 0, 2, 2, 1, 0, 0
     ]
+    if request.param == "str":
+        train_predictions = pl.Series(train_predictions).cast(pl.String, strict=False).replace({"0": "setosa", "1": "versicolor", "2": "virginica"}).to_list()
+        test_predictions = pl.Series(test_predictions).cast(pl.String, strict=False).replace({"0": "setosa", "1": "versicolor", "2": "virginica"}).to_list()
     # fmt: on
 
-    return train_predictions, test_predictions
+    return df_train, df_test, train_predictions, test_predictions
 
 
+@pytest.mark.parametrize("data", ["int", "str"], indirect=True)
 @pytest.mark.parametrize("is_lazy", [True, False])
 @pytest.mark.parametrize("use_categorical_feature", [True, False])
-def test_tree(data, predictions, is_lazy, use_categorical_feature):
-    df_train, df_test = data
+def test_tree(data, is_lazy, use_categorical_feature):
+    df_train, df_test, train_predictions, test_predictions = data
     if is_lazy:
         df_train = df_train.lazy()
         df_test = df_test.lazy()
-    train_predictions, test_predictions = predictions
 
     if not use_categorical_feature:
         df_train = df_train.drop("categorical_feature")
