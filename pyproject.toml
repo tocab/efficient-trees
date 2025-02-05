@@ -26,6 +26,7 @@ isort = "*"
 pandas = "*"
 pyarrow = "*"
 cffi = "*"
+coverage-badge = "*"
 
 [tool.black]
 line-length = 120
