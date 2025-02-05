@@ -157,9 +157,7 @@ class DecisionTreeClassifier:
 
         :return: majority class.
         """
-        majority_class = (
-            df.group_by(target_name).len().filter(pl.col("len") == pl.col("len").max()).select(target_name)
-        )
+        majority_class = df.group_by(target_name).len().filter(pl.col("len") == pl.col("len").max()).select(target_name)
         if isinstance(majority_class, pl.LazyFrame):
             majority_class = majority_class.collect(streaming=self.streaming)
         return majority_class[target_name][0]

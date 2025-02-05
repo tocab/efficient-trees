@@ -21,14 +21,10 @@ def data(request):
     df_test = pl.DataFrame(X_test, schema=iris.feature_names).with_columns(target=pl.Series(y_test))
     if request.param == "str":
         df_train = df_train.with_columns(
-            pl.col("target")
-            .cast(pl.String, strict=False)
-            .replace({"0": "setosa", "1": "versicolor", "2": "virginica"})
+            pl.col("target").cast(pl.String, strict=False).replace({"0": "setosa", "1": "versicolor", "2": "virginica"})
         )
         df_test = df_test.with_columns(
-            pl.col("target")
-            .cast(pl.String, strict=False)
-            .replace({"0": "setosa", "1": "versicolor", "2": "virginica"})
+            pl.col("target").cast(pl.String, strict=False).replace({"0": "setosa", "1": "versicolor", "2": "virginica"})
         )
 
     # add dummy categorical feature
@@ -47,8 +43,12 @@ def data(request):
         1, 0, 0, 0, 2, 2, 1, 0, 0
     ]
     if request.param == "str":
-        train_predictions = pl.Series(train_predictions).cast(pl.String, strict=False).replace({"0": "setosa", "1": "versicolor", "2": "virginica"}).to_list()
-        test_predictions = pl.Series(test_predictions).cast(pl.String, strict=False).replace({"0": "setosa", "1": "versicolor", "2": "virginica"}).to_list()
+        train_predictions = pl.Series(train_predictions).cast(pl.String, strict=False).replace(
+            {"0": "setosa", "1": "versicolor", "2": "virginica"}
+        ).to_list()
+        test_predictions = pl.Series(test_predictions).cast(pl.String, strict=False).replace(
+            {"0": "setosa", "1": "versicolor", "2": "virginica"}
+        ).to_list()
     # fmt: on
 
     return df_train, df_test, train_predictions, test_predictions
