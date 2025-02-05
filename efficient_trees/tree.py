@@ -80,9 +80,6 @@ class DecisionTreeClassifier:
 
         # Shrink dtypes
         data = data.select(pl.all().shrink_dtype())
-        # data = data.select(pl.all().shrink_dtype()).with_columns(
-        #     pl.col(target_name).cast(pl.UInt64).shrink_dtype().alias(target_name)
-        # )
 
         # Prepare categorical columns with target encoding
         if self.categorical_columns:
