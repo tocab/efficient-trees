@@ -63,7 +63,7 @@ def _plot_node(ax: plt.Axes, node: dict, x: float, y: float, dx: float, depth: i
             (
                 f"Feature: {node['feature']}\n"
                 f"<= {node['threshold']:.2f}\n"
-                f"Entropy: {node.get('entropy', 0):.2f}\n"
+                f"Criterion value: {node.get('criterion_value', 0):.2f}\n"
                 f"Information Gain: {node.get('information_gain', 0):.2f}\n"
                 f"Targets: {node.get('target_distribution', 'N/A')}"
             ),
