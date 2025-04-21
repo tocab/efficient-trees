@@ -215,11 +215,9 @@ class DecisionTreeClassifier:
         elif self.criterion == Criterion.GINI:
             criterion_expressions = {
                 direction: (
-                    pl.sum_horizontal(
-                        [
-                            1.0 - pl.col(f"{direction}_proportion_class_{target_value}") ** 2
-                            for target_value in unique_targets
-                        ]
+                    1.0
+                    - pl.sum_horizontal(
+                        [pl.col(f"{direction}_proportion_class_{target_value}") ** 2 for target_value in unique_targets]
                     )
                 ).alias(f"{direction}_criterion")
                 for direction in ["left", "right", "parent"]
