@@ -125,7 +125,7 @@ class DecisionTreeClassifier:
         if self.categorical_mappings:
             data = self.apply_categorical_mappings(data)
 
-        def _predict_many(node, temp_data):
+        def _predict_many(node: dict, temp_data: pl.DataFrame):
             if node["type"] == "node":
                 left = _predict_many(node["left"], temp_data.filter(pl.col(node["feature"]) <= node["threshold"]))
                 right = _predict_many(node["right"], temp_data.filter(pl.col(node["feature"]) > node["threshold"]))
