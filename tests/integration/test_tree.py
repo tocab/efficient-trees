@@ -5,6 +5,7 @@ import pytest
 from sklearn.datasets import load_iris
 from sklearn.model_selection import train_test_split
 
+from efficient_trees.enums import Criterion
 from efficient_trees.tree import DecisionTreeClassifier
 
 
@@ -33,32 +34,42 @@ def data(request):
     df_test = df_test.with_columns(categorical_feature=pl.Series([cycle.__next__() for _ in range(len(df_test))]))
 
     # fmt: off
-    train_predictions = [
-        1, 2, 2, 1, 2, 1, 2, 1, 0, 2, 1, 0, 0, 1, 1, 2, 1, 0, 0, 1, 0, 1, 2, 0, 1, 2, 0, 2, 2, 1, 1, 2, 1, 0, 1, 2, 0,
-        0, 1, 1, 0, 2, 0, 0, 2, 1, 2, 2, 2, 2, 1, 0, 0, 1, 2, 0, 0, 0, 1, 2, 0, 2, 2, 0, 1, 1, 2, 1, 2, 0, 2, 1, 2, 1,
-        1, 1, 0, 1, 1, 0, 1, 2, 2, 0, 1, 2, 2, 0, 2, 0, 1, 2, 2, 1, 2, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2
-    ]
-    test_predictions = [
-        1, 0, 2, 1, 1, 0, 1, 2, 1, 1, 2, 0, 0, 0, 0, 1, 2, 1, 1, 2, 0, 2, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 1, 0, 0, 2,
-        1, 0, 0, 0, 2, 2, 1, 0, 0
-    ]
+    predictions = {
+        "train_predictions_entropy": [
+            1, 2, 2, 1, 2, 1, 2, 1, 0, 2, 1, 0, 0, 1, 1, 2, 1, 0, 0, 1, 0, 1, 2, 0, 1, 2, 0, 2, 2, 1, 1, 2, 1, 0, 1, 2,
+            0, 0, 1, 1, 0, 2, 0, 0, 2, 1, 2, 2, 2, 2, 1, 0, 0, 1, 2, 0, 0, 0, 1, 2, 0, 2, 2, 0, 1, 1, 2, 1, 2, 0, 2, 1,
+            2, 1, 1, 1, 0, 1, 1, 0, 1, 2, 2, 0, 1, 2, 2, 0, 2, 0, 1, 2, 2, 1, 2, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2
+        ],
+        "test_predictions_entropy": [
+            1, 0, 2, 1, 1, 0, 1, 2, 1, 1, 2, 0, 0, 0, 0, 1, 2, 1, 1, 2, 0, 2, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 1, 0, 0, 2,
+            1, 0, 0, 0, 2, 2, 1, 0, 0
+        ],
+        "train_predictions_gini": [
+            1, 2, 2, 1, 2, 1, 2, 1, 0, 2, 1, 0, 0, 1, 1, 2, 1, 0, 0, 1, 0, 1, 2, 0, 1, 2, 0, 2, 2, 1, 1, 2, 1, 0, 1, 2,
+            0, 0, 1, 2, 0, 2, 0, 0, 2, 1, 2, 2, 2, 2, 1, 0, 0, 2, 2, 0, 0, 0, 1, 2, 0, 2, 2, 0, 1, 1, 2, 1, 2, 0, 2, 1,
+            2, 1, 1, 1, 0, 1, 1, 0, 1, 2, 2, 0, 1, 2, 2, 0, 2, 0, 1, 2, 2, 1, 2, 1, 1, 2, 2, 0, 1, 2, 0, 1, 2
+        ],
+        "test_predictions_gini": [
+            1, 0, 2, 1, 1, 0, 1, 2, 1, 1, 2, 0, 0, 0, 0, 1, 2, 1, 1, 2, 0, 2, 0, 2, 2, 2, 2, 2, 0, 0, 0, 0, 1, 0, 0, 2,
+            1, 0, 0, 0, 2, 2, 1, 0, 0
+        ],
+    }
     if request.param == "str":
-        train_predictions = pl.Series(train_predictions).cast(pl.String, strict=False).replace(
-            {"0": "setosa", "1": "versicolor", "2": "virginica"}
-        ).to_list()
-        test_predictions = pl.Series(test_predictions).cast(pl.String, strict=False).replace(
-            {"0": "setosa", "1": "versicolor", "2": "virginica"}
-        ).to_list()
+        for prediction in predictions:
+            predictions[prediction] = pl.Series(predictions[prediction]).cast(pl.String, strict=False).replace(
+                {"0": "setosa", "1": "versicolor", "2": "virginica"}
+            ).to_list()
     # fmt: on
 
-    return df_train, df_test, train_predictions, test_predictions
+    return df_train, df_test, predictions
 
 
 @pytest.mark.parametrize("data", ["int", "str"], indirect=True)
 @pytest.mark.parametrize("is_lazy", [True, False])
 @pytest.mark.parametrize("use_categorical_feature", [True, False])
-def test_tree(data, is_lazy, use_categorical_feature):
-    df_train, df_test, train_predictions, test_predictions = data
+@pytest.mark.parametrize("criterion", [Criterion.ENTROPY, Criterion.GINI])
+def test_tree(data, is_lazy, use_categorical_feature, criterion):
+    df_train, df_test, predictions = data
     if is_lazy:
         df_train = df_train.lazy()
         df_test = df_test.lazy()
@@ -67,7 +78,7 @@ def test_tree(data, is_lazy, use_categorical_feature):
         df_train = df_train.drop("categorical_feature")
         df_test = df_test.drop("categorical_feature")
 
-    decision_tree_classifier = DecisionTreeClassifier(max_depth=4)
+    decision_tree_classifier = DecisionTreeClassifier(max_depth=4, criterion=criterion)
     decision_tree_classifier.fit(df_train, "target")
 
     train_predict_many = decision_tree_classifier.predict_many(df_train)
@@ -82,5 +93,10 @@ def test_tree(data, is_lazy, use_categorical_feature):
 
     assert train_predict == train_predict_many
     assert test_predict == test_predict_many
-    assert train_predict == train_predictions
-    assert test_predict == test_predictions
+
+    if criterion == Criterion.ENTROPY:
+        assert train_predict == predictions["train_predictions_entropy"]
+        assert test_predict == predictions["test_predictions_entropy"]
+    elif criterion == Criterion.GINI:
+        assert train_predict == predictions["train_predictions_gini"]
+        assert test_predict == predictions["test_predictions_gini"]

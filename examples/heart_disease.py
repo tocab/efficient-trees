@@ -26,7 +26,7 @@ test_data = data.slice(count_training_data)
 tree = DecisionTreeClassifier(max_depth=8, streaming=True, categorical_columns=categorical_columns)
 tree.fit(training_data, target_name)
 tree.save_model("decision_tree.pkl")
-plot_tree(tree.tree, "decision_tree_iris.pdf")
+plot_tree(tree.tree, "decision_tree_heart_disease.pdf")
 
 for data_type, dataset in zip(["Training", "Test"], [training_data, test_data]):
     predictions = tree.predict_many(dataset.drop(target_name).fill_null(0.0))

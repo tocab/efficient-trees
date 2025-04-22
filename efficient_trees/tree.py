@@ -1,5 +1,5 @@
 """
-This module defines a class `PolarsDecisionTree` that implements a decision tree classifier using the Polars library
+This module defines a class `DecisionTreeClassifier` that implements a decision tree classifier using the Polars library
 for data manipulation. The class is designed to handle both numerical and categorical features, and can optionally
 use lazy evaluation and streaming capabilities of Polars.
 """
@@ -9,13 +9,21 @@ from typing import Iterable, List, Union
 
 import polars as pl
 
+from efficient_trees.enums import Criterion
+
 
 class DecisionTreeClassifier:
     """
     A decision tree classifier using Polars as backend.
     """
 
-    def __init__(self, streaming=False, max_depth=None, categorical_columns=None):
+    def __init__(
+        self,
+        streaming: bool = False,
+        max_depth: int = None,
+        categorical_columns: list[str] = None,
+        criterion: Criterion = Criterion.ENTROPY,
+    ):
         """
         Init method.
 
@@ -27,6 +35,7 @@ class DecisionTreeClassifier:
         self.categorical_columns = categorical_columns
         self.categorical_mappings = None
         self.tree = None
+        self.criterion = criterion
 
     def save_model(self, path: str) -> None:
         """
@@ -116,7 +125,7 @@ class DecisionTreeClassifier:
         if self.categorical_mappings:
             data = self.apply_categorical_mappings(data)
 
-        def _predict_many(node, temp_data):
+        def _predict_many(node: dict, temp_data: pl.DataFrame):
             if node["type"] == "node":
                 left = _predict_many(node["left"], temp_data.filter(pl.col(node["feature"]) <= node["threshold"]))
                 right = _predict_many(node["right"], temp_data.filter(pl.col(node["feature"]) > node["threshold"]))
@@ -185,6 +194,34 @@ class DecisionTreeClassifier:
         """
         if self.max_depth is not None and depth >= self.max_depth:
             return {"type": "leaf", "value": self.get_majority_class(data, target_name)}
+
+        # Pre-define expressions for criterion
+        if self.criterion == Criterion.ENTROPY:
+            criterion_expressions = {
+                direction: (
+                    -1
+                    * pl.sum_horizontal(
+                        [
+                            (
+                                pl.col(f"{direction}_proportion_class_{target_value}")
+                                * pl.col(f"{direction}_proportion_class_{target_value}").log(base=2)
+                            ).fill_nan(0.0)
+                            for target_value in unique_targets
+                        ]
+                    )
+                ).alias(f"{direction}_criterion")
+                for direction in ["left", "right", "parent"]
+            }
+        elif self.criterion == Criterion.GINI:
+            criterion_expressions = {
+                direction: (
+                    1.0
+                    - pl.sum_horizontal(
+                        [pl.col(f"{direction}_proportion_class_{target_value}") ** 2 for target_value in unique_targets]
+                    )
+                ).alias(f"{direction}_criterion")
+                for direction in ["left", "right", "parent"]
+            }
 
         # Make data lazy here to avoid that it is evaluated in each loop iteration.
         data = data.lazy()
@@ -260,42 +297,9 @@ class DecisionTreeClassifier:
                     ]
                 )
                 .select(
-                    (
-                        -1
-                        * pl.sum_horizontal(
-                            [
-                                (
-                                    pl.col(f"left_proportion_class_{target_value}")
-                                    * pl.col(f"left_proportion_class_{target_value}").log(base=2)
-                                ).fill_nan(0.0)
-                                for target_value in unique_targets
-                            ]
-                        )
-                    ).alias("left_entropy"),
-                    (
-                        -1
-                        * pl.sum_horizontal(
-                            [
-                                (
-                                    pl.col(f"right_proportion_class_{target_value}")
-                                    * pl.col(f"right_proportion_class_{target_value}").log(base=2)
-                                ).fill_nan(0.0)
-                                for target_value in unique_targets
-                            ]
-                        )
-                    ).alias("right_entropy"),
-                    (
-                        -1
-                        * pl.sum_horizontal(
-                            [
-                                (
-                                    pl.col(f"parent_proportion_class_{target_value}")
-                                    * pl.col(f"parent_proportion_class_{target_value}").log(base=2)
-                                ).fill_nan(0.0)
-                                for target_value in unique_targets
-                            ]
-                        )
-                    ).alias("parent_entropy"),
+                    criterion_expressions["left"],
+                    criterion_expressions["right"],
+                    criterion_expressions["parent"],
                     # From previous select
                     pl.col("cum_sum_count_examples"),
                     pl.col("sum_count_examples"),
@@ -303,19 +307,19 @@ class DecisionTreeClassifier:
                 )
                 .select(
                     (
-                        pl.col("cum_sum_count_examples") / pl.col("sum_count_examples") * pl.col("left_entropy")
+                        pl.col("cum_sum_count_examples") / pl.col("sum_count_examples") * pl.col("left_criterion")
                         + (pl.col("sum_count_examples") - pl.col("cum_sum_count_examples"))
                         / pl.col("sum_count_examples")
-                        * pl.col("right_entropy")
-                    ).alias("child_entropy"),
+                        * pl.col("right_criterion")
+                    ).alias("child_criterion"),
                     # From previous select
-                    pl.col("parent_entropy"),
+                    pl.col("parent_criterion"),
                     pl.col("feature_value"),
                 )
                 .select(
-                    (pl.col("parent_entropy") - pl.col("child_entropy")).alias("information_gain"),
+                    (pl.col("parent_criterion") - pl.col("child_criterion")).alias("information_gain"),
                     # From previous select
-                    pl.col("parent_entropy"),
+                    pl.col("parent_criterion"),
                     pl.col("feature_value"),
                 )
                 .filter(pl.col("information_gain").is_not_nan())
@@ -366,7 +370,7 @@ class DecisionTreeClassifier:
                 "feature": best_params["feature"],
                 "threshold": best_params["feature_value"],
                 "information_gain": best_params["information_gain"],
-                "entropy": best_params["parent_entropy"],
+                "criterion_value": best_params["parent_criterion"],
                 "target_distribution": target_distribution,
                 "left": left_subtree,
                 "right": right_subtree,
