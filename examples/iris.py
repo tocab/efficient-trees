@@ -9,22 +9,22 @@ from efficient_trees.tree import DecisionTreeClassifier
 from examples.utils.utils import plot_tree
 
 iris = load_iris()
-X, y = iris.data, iris.target  # type: ignore
+X, y = iris.data, iris.target
 
 # Split into training and test sets
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
 # data
-X_train_pl = pl.DataFrame(X_train, schema=iris.feature_names)  # type: ignore
+X_train_pl = pl.DataFrame(X_train, schema=iris.feature_names)
 y_train_pl = pl.Series(y_train)
-X_test_pl = pl.DataFrame(X_test, schema=iris.feature_names)  # type: ignore
+X_test_pl = pl.DataFrame(X_test, schema=iris.feature_names)
 y_test_pl = pl.Series(y_test)
 train_pl = X_train_pl.with_columns(target=y_train_pl)
 
 # Train the decision tree
 decision_tree_classifier = DecisionTreeClassifier(max_depth=4)
 decision_tree_classifier.fit(train_pl, "target")
-plot_tree(decision_tree_classifier.tree, "decision_tree_iris.pdf")  # type: ignore
+plot_tree(decision_tree_classifier.tree, "decision_tree_iris.pdf")
 
 # Predictions and evaluation
 y_train_pred_pl = decision_tree_classifier.predict(X_train_pl.iter_rows(named=True))
