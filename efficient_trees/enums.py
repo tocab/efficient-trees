@@ -7,7 +7,7 @@ from enum import Enum
 
 class Criterion(Enum):
     """
-    Enum for splitting criterion
+    Enum for splitting criterion.
     """
 
     GINI = "gini"
