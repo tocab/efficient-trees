@@ -41,7 +41,7 @@ print(predictions)
 
 ## Memory Usage Comparison
 
-The following plot demonstrates the memory usage of different frameworks over time when training a decision tree on a kaggle dataset. 
+The following plot demonstrates the memory usage of different frameworks over time when training a decision tree on a kaggle dataset.
 
 ### Frameworks Compared
 

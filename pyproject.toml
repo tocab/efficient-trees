@@ -5,12 +5,13 @@ description = "A memory-efficient implementation of decision trees."
 authors = ["Tobias Cabanski <t.cabanski@posteo.de>"]
 license = "MIT"
 readme = "README.md"
+packages = [{ include = "efficient_trees" }]
 
 [tool.poetry.dependencies]
-polars = "*"
 python = "^3.12"
+polars = "*"
 
-[tool.poetry.dev-dependencies]
+[tool.poetry.group.dev.dependencies]
 numpy = "*"
 scikit-learn = "*"
 lightgbm = "*"
@@ -26,14 +27,37 @@ isort = "*"
 pandas = "*"
 pyarrow = "*"
 cffi = "*"
+coverage-badge = "*"
 
-[tool.black]
+[tool.ruff]
 line-length = 120
-target-version = ["py312"]
+# Allow autofix for all enabled rules (when `--fix`) is provided.
+exclude = [
+  "examples/memory_profiling.py",
+  "tests",
+]
 
-[tool.isort]
-profile = "black"
+[tool.ruff.lint]
+# add things like "E712" (== True in pandas code) below
+extend-ignore = ["B904", "D105", "D107", "D200", "D203", "D212", "D214", "D215", "D401", "D404", "D405", "D406", "D407", "D408", "D409", "D410", "D411", "D413", "D415", "D416", "D417", "E203"]
+fixable = ["ALL"] # if you want to play it safe, remove "ALL" from here and do the manual fixes always/temporarily or select rules, that should be automatically fixed
+unfixable = ["B", "E712"] # specify list of groups and rules, that you don't want to be fixed
+select = [
+  "E",   # pycodestyle
+  "F",   # pyflakes
+  "UP",  # pyupgrade
+  "D",   # pydocstyle
+  "B",   # flake8-bugbear rules.
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["D104"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["efficient_trees", "tests"]
+order-by-type = false
 
 [build-system]
 requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"

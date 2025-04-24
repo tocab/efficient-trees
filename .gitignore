@@ -1,2 +1,6 @@
-.venv/
-.idea/
+**/.mypy_cache
+**/.ruff_cache
+**/.venv
+**/.idea/
+**/__pycache__/
+**/.DS_Store

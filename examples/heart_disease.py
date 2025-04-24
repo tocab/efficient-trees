@@ -1,3 +1,5 @@
+"""Heart Disease Classification."""
+
 import kagglehub
 import polars as pl
 from sklearn.metrics import accuracy_score
