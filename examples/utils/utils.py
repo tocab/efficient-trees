@@ -1,9 +1,15 @@
+"""Example utility functions for plotting and timing."""
+
 import time
 
 import matplotlib.pyplot as plt
 
 
 class Timer:
+    """
+    A simple timer class to measure elapsed time.
+    """
+
     def __enter__(self):
         self.start = time.perf_counter()  # High-precision timer
         return self

@@ -1,3 +1,5 @@
+"""Amex Default Prediction example."""
+
 import kagglehub
 import polars as pl
 from sklearn.metrics import accuracy_score
@@ -23,7 +25,7 @@ data = data.drop(columns_to_exclude).fill_null(0.0)
 tree = DecisionTreeClassifier(max_depth=4, streaming=True)
 tree.fit(data, target_name)
 tree.save_model("decision_tree.pkl")
-plot_tree(tree.tree, "decision_tree_iris.pdf")
+plot_tree(tree.tree, "decision_tree_iris.pdf")  # type: ignore
 
 predictions = tree.predict_many(data.drop(target_name))
 train_accuracy = accuracy_score(data.select(target_name).collect()[target_name], predictions)

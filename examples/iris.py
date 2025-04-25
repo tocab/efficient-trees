@@ -1,3 +1,5 @@
+"""Iris Classification."""
+
 import polars as pl
 from sklearn.datasets import load_iris
 from sklearn.metrics import accuracy_score

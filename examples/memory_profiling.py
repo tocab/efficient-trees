@@ -1,3 +1,5 @@
+"""Memory profiling of efficient-trees vs. sklearn and lightgbm."""
+
 import multiprocessing as mp
 
 import kagglehub

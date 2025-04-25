@@ -1,11 +1,13 @@
 """
-This module defines a class `DecisionTreeClassifier` that implements a decision tree classifier using the Polars library
-for data manipulation. The class is designed to handle both numerical and categorical features, and can optionally
+This module defines a `DecisionTreeClassifier` that implements a decision tree classifier using the Polars library.
+
+The class is designed to handle both numerical and categorical features, and can optionally
 use lazy evaluation and streaming capabilities of Polars.
 """
 
 import pickle
-from typing import Iterable, List, Union
+from collections.abc import Iterable
+from typing import Union
 
 import polars as pl
 
@@ -43,7 +45,6 @@ class DecisionTreeClassifier:
 
         :param path: Path to save the model.
         """
-
         # Save as pickle
         with open(path, "wb") as f:
             pickle.dump(
@@ -58,7 +59,6 @@ class DecisionTreeClassifier:
 
         :param path: Path to the saved model.
         """
-
         # Load as pickle
         with open(path, "rb") as f:
             loaded = pickle.load(f)
@@ -115,7 +115,7 @@ class DecisionTreeClassifier:
 
         self.tree = self._build_tree(data, feature_names, target_name, unique_targets, depth=0)
 
-    def predict_many(self, data: Union[pl.DataFrame, pl.LazyFrame]) -> List[Union[int, float]]:
+    def predict_many(self, data: Union[pl.DataFrame, pl.LazyFrame]) -> list[Union[int, float]]:
         """
         Predict method.
 
@@ -145,7 +145,14 @@ class DecisionTreeClassifier:
         predictions = predictions["prediction"].to_list()
         return predictions
 
-    def predict(self, data: Iterable[dict]):
+    def predict(self, data: Iterable[dict]) -> list[Union[int, float]]:
+        """
+        Predict method.
+
+        :param data: list of dicts
+        :return: List of predicted target values.
+        """
+
         def _predict_sample(node, sample):
             if node["type"] == "leaf":
                 return node["value"]
@@ -181,6 +188,7 @@ class DecisionTreeClassifier:
     ) -> dict:
         """
         Builds the decision tree recursively.
+
         If max_depth is reached, returns a leaf node with the majority class.
         Otherwise, finds the best split and creates internal nodes for left and right children.
 
@@ -266,8 +274,7 @@ class DecisionTreeClassifier:
                 )
                 .filter(
                     # At least one example available
-                    pl.col("sum_count_examples")
-                    > pl.col("cum_sum_count_examples")
+                    pl.col("sum_count_examples") > pl.col("cum_sum_count_examples")
                 )
                 .select(
                     [
