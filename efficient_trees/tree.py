@@ -21,7 +21,7 @@ class DecisionTreeClassifier:
 
     def __init__(
         self,
-        streaming: bool = False,
+        engine: str = "auto",
         max_depth: int = None,
         categorical_columns: list[str] = None,
         criterion: Criterion = Criterion.ENTROPY,
@@ -29,11 +29,11 @@ class DecisionTreeClassifier:
         """
         Init method.
 
-        :param streaming: Boolean flag to enable Polars streaming capabilities.
+        :param engine: String that defines the backend engine. E.g. streaming, gpu, auto
         :param max_depth: Maximum depth of the decision tree.
         """
         self.max_depth = max_depth
-        self.streaming = streaming
+        self.engine = engine
         self.categorical_columns = categorical_columns
         self.categorical_mappings = None
         self.tree = None
@@ -101,7 +101,7 @@ class DecisionTreeClassifier:
                         .group_by(categorical_column)
                         .agg(pl.col(target_name).mean().alias("avg"))
                         .sort("avg")
-                        .collect(streaming=self.streaming)[categorical_column]
+                        .collect(engine=self.engine)[categorical_column]
                     )
                 }
 
@@ -110,7 +110,7 @@ class DecisionTreeClassifier:
 
         unique_targets = data.select(target_name).unique()
         if isinstance(unique_targets, pl.LazyFrame):
-            unique_targets = unique_targets.collect(streaming=self.streaming)
+            unique_targets = unique_targets.collect(engine=self.engine)
         unique_targets = unique_targets[target_name].to_list()
 
         self.tree = self._build_tree(data, feature_names, target_name, unique_targets, depth=0)
@@ -140,7 +140,7 @@ class DecisionTreeClassifier:
         if isinstance(predictions, pl.LazyFrame):
             # Despite the execution plans says there is no streaming, using streaming here significantly
             # increases the performance and decreases the memory food print.
-            predictions = predictions.collect(streaming=True)
+            predictions = predictions.collect(engine=self.engine)
 
         predictions = predictions["prediction"].to_list()
         return predictions
@@ -175,7 +175,7 @@ class DecisionTreeClassifier:
         """
         majority_class = df.group_by(target_name).len().filter(pl.col("len") == pl.col("len").max()).select(target_name)
         if isinstance(majority_class, pl.LazyFrame):
-            majority_class = majority_class.collect(streaming=self.streaming)
+            majority_class = majority_class.collect(engine=self.engine)
         return majority_class[target_name][0]
 
     def _build_tree(
@@ -337,7 +337,7 @@ class DecisionTreeClassifier:
             information_gain_dfs.append(information_gain_df)
 
         if isinstance(information_gain_dfs[0], pl.LazyFrame):
-            information_gain_dfs = pl.collect_all(information_gain_dfs, streaming=self.streaming)
+            information_gain_dfs = pl.collect_all(information_gain_dfs, engine=self.engine)
 
         information_gain_dfs = pl.concat(information_gain_dfs, how="vertical_relaxed").sort(
             "information_gain", descending=True
@@ -351,7 +351,7 @@ class DecisionTreeClassifier:
         if information_gain > 0:
             left_mask = data.select(filter=pl.col(best_params["feature"]) <= best_params["feature_value"])
             if isinstance(left_mask, pl.LazyFrame):
-                left_mask = left_mask.collect(streaming=self.streaming)
+                left_mask = left_mask.collect(engine=self.engine)
             left_mask = left_mask["filter"]
 
             # Split data
@@ -364,7 +364,7 @@ class DecisionTreeClassifier:
             if isinstance(data, pl.LazyFrame):
                 target_distribution = (
                     data.select(target_name)
-                    .collect(streaming=self.streaming)[target_name]
+                    .collect(engine=self.engine)[target_name]
                     .value_counts()
                     .sort(target_name)["count"]
                     .to_list()

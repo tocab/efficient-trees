@@ -36,11 +36,20 @@ def train_efficient_tree_lazy(data_path):
     tree.fit(data, target_name)
 
 
+def train_efficient_tree_lazy_streaming(data_path):
+    data = pl.scan_parquet(data_path)
+    columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64"]
+    target_name = "target"
+    data = data.drop(columns_to_exclude).fill_null(0.0)
+    tree = ETDecisionTreeClassifier(max_depth=4, engine="streaming")
+    tree.fit(data, target_name)
+
+
 def train_efficient_tree(data_path):
     data = pl.scan_parquet(data_path)
     columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64"]
     target_name = "target"
-    data = data.drop(columns_to_exclude).fill_null(0.0).collect(streaming=True)
+    data = data.drop(columns_to_exclude).fill_null(0.0).collect(engine="streaming")
     tree = ETDecisionTreeClassifier(max_depth=4)
     tree.fit(data, target_name)
 
@@ -82,6 +91,7 @@ def main():
         "lightgbm": train_lightgbm,
         "efficient-tree": train_efficient_tree,
         "efficient-tree-lazy": train_efficient_tree_lazy,
+        "efficient-tree-lazy-streaming": train_efficient_tree_lazy_streaming,
         "sklearn": train_sklearn_tree,
     }
 
@@ -108,7 +118,7 @@ def main():
     plt.title("Memory Usage Over Time")
     plt.legend()
     plt.grid()
-    plt.savefig("sklearn_vs_et.pdf")
+    plt.savefig("memory_profile.pdf")
     plt.show()
 
 
