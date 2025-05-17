@@ -22,7 +22,7 @@ target_name = "target"
 
 data = data.drop(columns_to_exclude).fill_null(0.0)
 
-tree = DecisionTreeClassifier(max_depth=4, streaming=True)
+tree = DecisionTreeClassifier(max_depth=4, engine="streaming")
 tree.fit(data, target_name)
 tree.save_model("decision_tree.pkl")
 plot_tree(tree.tree, "decision_tree_iris.pdf")  # type: ignore
