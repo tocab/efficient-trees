@@ -39,7 +39,7 @@ def plot_tree(tree: dict, filename="decision_tree.pdf") -> None:
     print(f"Tree plot saved as {filename}")
 
 
-def _plot_node(ax: plt.Axes, node: dict, x: float, y: float, dx: float, depth: int, max_depth: int) -> None:
+def _plot_node(ax: plt.Axes, node: dict, x: float, y: float, dx: float, depth: int, max_depth: int) -> None:  # type: ignore
     """
     Recursive helper function to plot nodes and branches.
 

@@ -39,6 +39,9 @@ repos:
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.6
     hooks:
+      - id: ruff-format
+        name: "🐍 python · Format with Ruff"
+        types_or: [ python, pyi ]
       - id: ruff
         name: "🐍 python · Fix with Ruff"
         stages: [pre-commit]
@@ -46,11 +49,8 @@ repos:
         args:
           - --fix
           - --exit-non-zero-on-fix
-      - id: ruff-format
-        name: "🐍 python · Format with Ruff"
-        types_or: [ python, pyi ]
   - repo: https://github.com/RobertCraigie/pyright-python
-    rev: v1.1.402
+    rev: v1.1.403
     hooks:
       - id: pyright
         name: "🐍 python · Check types"
@@ -66,4 +66,5 @@ repos:
     rev: 0.7.9
     hooks:
       - id: uv-lock
+        name: "🔒 uv · Check the lock consistency"
         args: ["--check"]

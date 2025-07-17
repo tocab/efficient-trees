@@ -7,7 +7,7 @@ name = "efficient-trees"
 version = "0.1.0"
 description = "A memory-efficient implementation of decision trees."
 authors = [{ name = "Tobias Cabanski", email = "t.cabanski@posteo.de" }]
-requires-python = "~=3.12"
+requires-python = ">=3.12"
 readme = "README.md"
 license = "MIT"
 dependencies = ["polars"]

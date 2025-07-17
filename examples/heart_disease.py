@@ -28,9 +28,9 @@ test_data = data.slice(count_training_data)
 tree = DecisionTreeClassifier(max_depth=8, streaming=True, categorical_columns=categorical_columns)
 tree.fit(training_data, target_name)
 tree.save_model("decision_tree.pkl")
-plot_tree(tree.tree, "decision_tree_heart_disease.pdf")
+plot_tree(tree.tree, "decision_tree_heart_disease.pdf")  # type: ignore
 
-for data_type, dataset in zip(["Training", "Test"], [training_data, test_data]):
+for data_type, dataset in zip(["Training", "Test"], [training_data, test_data], strict=True):
     predictions = tree.predict_many(dataset.drop(target_name).fill_null(0.0))
     accuracy = accuracy_score(dataset.select(target_name)[target_name], predictions)
     print(f"{data_type} Accuracy: {accuracy:.2f}")
