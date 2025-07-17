@@ -25,7 +25,7 @@ data = data.drop(columns_to_exclude).fill_null(0.0)
 
 models = [
     DecisionTreeClassifier(max_depth=4, streaming=True),
-    RandomForestClassifier(seed=42, n_estimators=100, max_depth=4, streaming=True)
+    RandomForestClassifier(seed=42, n_estimators=100, max_depth=4, streaming=True),
 ]
 
 for model in models:

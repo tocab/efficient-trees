@@ -1,4 +1,4 @@
-"""Memory profiling of efficient-trees vs. sklearn and lightgbm."""
+"""Memory profiling of efficient-trees Decision Trees vs. sklearn and lightgbm."""
 
 import multiprocessing as mp
 
@@ -15,12 +15,15 @@ from efficient_trees.tree import DecisionTreeClassifier as ETDecisionTreeClassif
 
 # Wrapper to measure memory usage over time
 def measure_memory_usage(func, queue, *args, **kwargs):
-    mem_usage = memory_usage((func, args, kwargs)) # type: ignore
+    """Measure memory usage of a function over time."""
+    # memory_usage returns a list of memory usage values over time
+    mem_usage = memory_usage((func, args, kwargs))  # type: ignore
     queue.put(mem_usage)
 
 
 # Example functions to benchmark
 def train_sklearn_tree(data_path):
+    """Train a sklearn Decision Tree."""
     data = pd.read_parquet(data_path)
     columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64", "target"]
     tree = SkLearnDecisionTreeClassifier(max_depth=4, criterion="entropy")
@@ -28,6 +31,7 @@ def train_sklearn_tree(data_path):
 
 
 def train_efficient_tree_lazy(data_path):
+    """Train an efficient-trees Decision Tree with lazy evaluation."""
     data = pl.scan_parquet(data_path)
     columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64"]
     target_name = "target"
@@ -37,15 +41,17 @@ def train_efficient_tree_lazy(data_path):
 
 
 def train_efficient_tree(data_path):
+    """Train an efficient-trees Decision Tree with eager evaluation."""
     data = pl.scan_parquet(data_path)
     columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64"]
     target_name = "target"
-    data = data.drop(columns_to_exclude).fill_null(0.0).collect(streaming=True) # type: ignore
+    data = data.drop(columns_to_exclude).fill_null(0.0).collect(streaming=True)  # type: ignore
     tree = ETDecisionTreeClassifier(max_depth=4)
     tree.fit(data, target_name)
 
 
 def train_lightgbm(data_path):
+    """Train a lightgbm."""
     data = pl.scan_parquet(data_path)
     columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64"]
 
@@ -56,8 +62,8 @@ def train_lightgbm(data_path):
     # - cffi needs to be installed
     # Internally, lightgbm will try to import these packages and fail silently if they are not available.
     lgbm_dataset = lgbm.Dataset(
-        data=data.drop(columns_to_exclude + ["target"]).collect(streaming=True).to_arrow(), # type: ignore
-        label=data.select("target").collect(streaming=True)["target"].to_arrow(), # type: ignore
+        data=data.drop(columns_to_exclude + ["target"]).collect(streaming=True).to_arrow(),  # type: ignore
+        label=data.select("target").collect(streaming=True)["target"].to_arrow(),  # type: ignore
         free_raw_data=True,
     )
     params = {"objective": "binary", "max_depth": 4}
@@ -72,6 +78,7 @@ def train_lightgbm(data_path):
 
 # Main benchmarking script
 def main():
+    """Main function to benchmark memory usage of different tree implementations."""
     # Set this, otherwise it doesn't match well with polars.
     mp.set_start_method("spawn")
     # Download latest version

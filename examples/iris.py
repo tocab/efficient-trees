@@ -29,7 +29,7 @@ models = [
 # Train the decision tree
 for model in models:
     model.fit(train_pl, "target")
-    if isinstance(model, DecisionTreeClassifier):        
+    if isinstance(model, DecisionTreeClassifier):
         plot_tree(model.tree, "decision_tree_iris.pdf")  # type: ignore
 
     # Predictions and evaluation

@@ -5,13 +5,13 @@ The class is designed to handle both numerical and categorical features, and can
 use lazy evaluation and streaming capabilities of Polars.
 """
 
-import pickle
 from collections.abc import Iterable
 
 import polars as pl
 
 from efficient_trees.enums import Criterion
 from efficient_trees.tree import DecisionTreeClassifier
+
 
 class RandomForestClassifier:
     """
@@ -20,11 +20,11 @@ class RandomForestClassifier:
 
     def __init__(
         self,
-        seed: int | None = None,        
+        seed: int | None = None,
         n_estimators: int = 100,
         max_samples: int | float | None = 0.2,
         sample_with_replacement: bool = True,
-        streaming: bool = False,        
+        streaming: bool = False,
         criterion: Criterion = Criterion.ENTROPY,
         categorical_columns: list[str] | None = None,
         max_depth: int | None = None,
@@ -41,11 +41,11 @@ class RandomForestClassifier:
             `max_samples` should be in the interval `(0.0, 1.0]`.
 
         :param sample_with_replacement: If True, samples are drawn with replacement.
-        :param streaming: If True, uses Polars' lazy evaluation.        
+        :param streaming: If True, uses Polars' lazy evaluation.
         :param criterion: The function to measure the quality of a split.
         :param categorical_columns: List of categorical columns to be used in the model.
             If None, all columns are treated as numerical.
-        :param max_depth: Maximum depth of the tree. If None, nodes are expanded until all leaves are pure.        
+        :param max_depth: Maximum depth of the tree. If None, nodes are expanded until all leaves are pure.
         """
         self.seed = seed
         self.streaming = streaming
@@ -71,22 +71,26 @@ class RandomForestClassifier:
             f"max_depth={self.max_depth})"
         )
 
-    def fit(self,  data: pl.DataFrame | pl.LazyFrame, target_name: str) -> None:
+    def fit(self, data: pl.DataFrame | pl.LazyFrame, target_name: str) -> None:
         """
         Fit the random forest model to the training data.
 
         :param data: Training data as a Polars DataFrame or LazyFrame.
         :param target_name: Name of the target column in the DataFrame.
         """
-        breakpoint()
+        # breakpoint()
+        if isinstance(data, pl.LazyFrame):
+            data = data.collect()
         for _ in range(self.n_estimators):
             # Sample data with replacement
             sampled_data = data.sample(
                 n=self.max_samples if isinstance(self.max_samples, int) else None,
-                fraction=self.max_samples if isinstance(self.max_samples, float) else None, 
+                fraction=self.max_samples if isinstance(self.max_samples, float) else None,
                 shuffle=True,
                 with_replacement=self.sample_with_replacement,
-            )
+            )  # type: ignore
+            if self.streaming:
+                sampled_data = sampled_data.lazy()
 
             tree = DecisionTreeClassifier(
                 streaming=self.streaming,
@@ -109,14 +113,14 @@ class RandomForestClassifier:
             raise ValueError("The model has not been fitted yet.")
 
         # Collect predictions from each tree
-        breakpoint()
+        # breakpoint()
         raw_predictions = [tree.predict(data) for tree in self.trees]
         tree_predictions = pl.DataFrame(raw_predictions)
-        aggregated_predictions = tree_predictions.select(pl.mean_horizontal()).to_list()
-            
+        aggregated_predictions = tree_predictions.select(pl.mean_horizontal()).to_series(0).to_list()
+
         return aggregated_predictions
-    
-    def predict_many(self, data: pl.DataFrame | pl.LazyFrame) -> pl.Series:
+
+    def predict_many(self, data: pl.DataFrame | pl.LazyFrame) -> list[int | float]:
         """
         Predict the class labels for the input data.
 
@@ -127,9 +131,9 @@ class RandomForestClassifier:
             raise ValueError("The model has not been fitted yet.")
 
         # Collect predictions from each tree
-        breakpoint()
+        # breakpoint()
         raw_predictions = [tree.predict_many(data) for tree in self.trees]
         tree_predictions = pl.DataFrame(raw_predictions)
-        aggregated_predictions = tree_predictions.select(pl.mean_horizontal()).to_list()
-            
+        aggregated_predictions = tree_predictions.select(pl.mean_horizontal()).to_series(0).to_list()
+
         return aggregated_predictions

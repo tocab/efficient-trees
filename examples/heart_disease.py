@@ -30,10 +30,10 @@ models = [
     DecisionTreeClassifier(max_depth=8, streaming=True, categorical_columns=categorical_columns),
     RandomForestClassifier(
         seed=42, n_estimators=100, max_depth=8, streaming=True, categorical_columns=categorical_columns
-    )
+    ),
 ]
 
-for model in models:    
+for model in models:
     model.fit(training_data, target_name)
     if isinstance(model, DecisionTreeClassifier):
         model.save_model("decision_tree.pkl")
