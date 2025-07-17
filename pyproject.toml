@@ -1,33 +1,36 @@
-[tool.poetry]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
 name = "efficient-trees"
 version = "0.1.0"
 description = "A memory-efficient implementation of decision trees."
-authors = ["Tobias Cabanski <t.cabanski@posteo.de>"]
-license = "MIT"
+authors = [{ name = "Tobias Cabanski", email = "t.cabanski@posteo.de" }]
+requires-python = "~=3.12"
 readme = "README.md"
-packages = [{ include = "efficient_trees" }]
+license = "MIT"
+dependencies = ["polars"]
 
-[tool.poetry.dependencies]
-python = "^3.12"
-polars = "*"
-
-[tool.poetry.group.dev.dependencies]
-numpy = "*"
-scikit-learn = "*"
-lightgbm = "*"
-memory-profiler = "*"
-matplotlib = "*"
-kagglehub = "*"
-pytest = "*"
-pytest-cov = "*"
-flake8 = "7.1.1"
-black = "24.10.0"
-pre-commit = "*"
-isort = "*"
-pandas = "*"
-pyarrow = "*"
-cffi = "*"
-coverage-badge = "*"
+[dependency-groups]
+dev = [
+    "numpy",
+    "scikit-learn",
+    "lightgbm",
+    "memory-profiler",
+    "matplotlib",
+    "kagglehub",
+    "pytest",
+    "pytest-cov",
+    "flake8==7.1.1",
+    "black==24.10.0",
+    "pre-commit",
+    "isort",
+    "pandas",
+    "pyarrow",
+    "cffi",
+    "coverage-badge",
+]
 
 [tool.ruff]
 line-length = 120
@@ -52,6 +55,7 @@ select = [
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
+
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["D104"]
 
@@ -59,5 +63,19 @@ convention = "pep257"
 known-first-party = ["efficient_trees", "tests"]
 order-by-type = false
 
-[build-system]
-requires = ["poetry-core"]
+[tool.hatch.build]
+exclude = [
+  "/.*",
+  "/docs",
+  "/tests",
+  "/data",
+  "/notebooks",
+  ".gitignore",
+  "README.md",
+  "uv.lock",
+  ".python-version",
+]
+
+[tool.pyright]
+venvPath = "."
+venv = ".venv"

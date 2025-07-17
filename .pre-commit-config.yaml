@@ -3,28 +3,67 @@ repos:
     rev: v4.3.0
     hooks:
       - id: check-json
+        name: "✅ json · Check Json"
         stages: [pre-commit]
       - id: pretty-format-json
+        name: "✅ json · Pretty Format Json"
         stages: [pre-commit]
-        exclude: \.ipynb$
+        exclude: "^notebooks/|.ipynb$"
         args:
           - --autofix
           - --no-sort-keys
       - id: end-of-file-fixer
+        name: "✅ EOF · End of File Fixer"
         stages: [pre-commit]
       - id: trailing-whitespace
+        name: "✅ Whitespaces · Trailing Whitespaces"
         stages: [pre-commit]
+      - id: check-merge-conflict
+        name: "🌳 git · Detect conflict markers"
+      - id: check-added-large-files
+        name: "🌳 git · Block large file commits"
+        args: ['--maxkb=5000']
       - id: debug-statements
+        name: "🐍 python · Check debug statemens"
         stages: [pre-commit]
+        exclude: "^scripts/"
         language_version: python3.12
+  - repo: https://github.com/python-jsonschema/check-jsonschema
+    rev: 0.31.0
+    hooks:
+      - id: check-github-workflows
+        name: "🐙 github-actions · Validate gh workflow files"
+        args: ["--verbose"]
+      - id: check-taskfile
+        name: "✅ taskfile · Validate Task configuration"
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.11.6
     hooks:
       - id: ruff
+        name: "🐍 python · Fix with Ruff"
         stages: [pre-commit]
         types_or: [ python, pyi ]
         args:
           - --fix
           - --exit-non-zero-on-fix
       - id: ruff-format
+        name: "🐍 python · Format with Ruff"
         types_or: [ python, pyi ]
+  - repo: https://github.com/RobertCraigie/pyright-python
+    rev: v1.1.402
+    hooks:
+      - id: pyright
+        name: "🐍 python · Check types"
+  # - repo: https://github.com/srstevenson/nb-clean
+  #   rev: 2.4.0
+  #   hooks:
+  #     - id: nb-clean
+  #       name: "🐍 python · Clean Notebooks"
+  #       stages: [pre-commit]
+  #       args:
+  #         - --remove-empty-cells
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.7.9
+    hooks:
+      - id: uv-lock
+        args: ["--check"]
