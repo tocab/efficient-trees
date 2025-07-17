@@ -37,6 +37,11 @@ class DecisionTreeClassifier:
         self.categorical_mappings = None
         self.tree = None
         self.criterion = criterion
+        self.fitted_ = False
+    
+    def __repr__(self) -> str:
+        return f"DecisionTreeClassifier(max_depth={self.max_depth}, streaming={self.streaming}, " \
+               f"categorical_columns={self.categorical_columns}, criterion={self.criterion})"
 
     def save_model(self, path: str) -> None:
         """
@@ -112,7 +117,8 @@ class DecisionTreeClassifier:
             unique_targets = unique_targets.collect(streaming=self.streaming)  # type: ignore
         unique_targets = unique_targets[target_name].to_list()
 
-        self.tree = self._build_tree(data, feature_names, target_name, unique_targets, depth=0)
+        self.tree = self._build_tree(data, feature_names, target_name, unique_targets, depth=0)        
+        self.fitted_ = True
 
     def predict_many(self, data: pl.DataFrame | pl.LazyFrame) -> list[int | float]:
         """
@@ -121,6 +127,8 @@ class DecisionTreeClassifier:
         :param data: Polars DataFrame or LazyFrame.
         :return: List of predicted target values.
         """
+        if not self.fitted_:
+            raise ValueError("The model has not been fitted yet.")
         if self.categorical_mappings:
             data = self.apply_categorical_mappings(data)
 
@@ -151,7 +159,8 @@ class DecisionTreeClassifier:
         :param data: list of dicts
         :return: List of predicted target values.
         """
-
+        if not self.fitted_:
+            raise ValueError("The model has not been fitted yet.")
         def _predict_sample(node, sample):
             if node["type"] == "leaf":
                 return node["value"]
