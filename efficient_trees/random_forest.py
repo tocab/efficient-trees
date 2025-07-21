@@ -12,6 +12,14 @@ import polars as pl
 from efficient_trees.enums import Criterion
 from efficient_trees.tree import DecisionTreeClassifier
 
+from collections import Counter
+
+
+def mode_horizontal(*exprs: pl.Expr) -> pl.Expr:
+    return pl.fold(acc=pl.lit([]), function=lambda acc, x: acc.list.concat(x), exprs=exprs).map_elements(
+        lambda vals: Counter(vals).most_common(1)[0][0]
+    )
+
 
 class RandomForestClassifier:
     """
@@ -49,6 +57,7 @@ class RandomForestClassifier:
         """
         self.seed = seed
         self.streaming = streaming
+        self._engine = "streaming" if streaming else "auto"
         self.n_estimators = n_estimators
         self.criterion = criterion
         self.categorical_columns = categorical_columns
@@ -79,8 +88,9 @@ class RandomForestClassifier:
         :param target_name: Name of the target column in the DataFrame.
         """
         # breakpoint()
-        if isinstance(data, pl.LazyFrame):
-            data = data.collect()
+        lazy_input = isinstance(data, pl.LazyFrame)
+        if lazy_input:
+            data = data.collect(engine=self._engine)
         for _ in range(self.n_estimators):
             # Sample data with replacement
             sampled_data = data.sample(
@@ -89,7 +99,7 @@ class RandomForestClassifier:
                 shuffle=True,
                 with_replacement=self.sample_with_replacement,
             )  # type: ignore
-            if self.streaming:
+            if lazy_input:
                 sampled_data = sampled_data.lazy()
 
             tree = DecisionTreeClassifier(
@@ -113,10 +123,9 @@ class RandomForestClassifier:
             raise ValueError("The model has not been fitted yet.")
 
         # Collect predictions from each tree
-        # breakpoint()
         raw_predictions = [tree.predict(data) for tree in self.trees]
         tree_predictions = pl.DataFrame(raw_predictions)
-        aggregated_predictions = tree_predictions.select(pl.mean_horizontal()).to_series(0).to_list()
+        aggregated_predictions = tree_predictions.select(mode_horizontal(pl.all())).to_series(0).to_list()
 
         return aggregated_predictions
 
@@ -131,9 +140,8 @@ class RandomForestClassifier:
             raise ValueError("The model has not been fitted yet.")
 
         # Collect predictions from each tree
-        # breakpoint()
         raw_predictions = [tree.predict_many(data) for tree in self.trees]
         tree_predictions = pl.DataFrame(raw_predictions)
-        aggregated_predictions = tree_predictions.select(pl.mean_horizontal()).to_series(0).to_list()
+        aggregated_predictions = tree_predictions.select(mode_horizontal(pl.all())).to_series(0).to_list()
 
         return aggregated_predictions

@@ -33,6 +33,7 @@ class DecisionTreeClassifier:
         """
         self.max_depth = max_depth
         self.streaming = streaming
+        self._engine = "streaming" if streaming else "auto"
         self.categorical_columns = categorical_columns
         self.categorical_mappings = None
         self.tree = None
@@ -107,7 +108,7 @@ class DecisionTreeClassifier:
                         .group_by(categorical_column)
                         .agg(pl.col(target_name).mean().alias("avg"))
                         .sort("avg")
-                        .collect(streaming=self.streaming)[categorical_column]  # type: ignore
+                        .collect(engine=self._engine)[categorical_column]  # type: ignore
                     )
                 }
 
@@ -116,7 +117,7 @@ class DecisionTreeClassifier:
 
         unique_targets = data.select(target_name).unique()
         if isinstance(unique_targets, pl.LazyFrame):
-            unique_targets = unique_targets.collect(streaming=self.streaming)  # type: ignore
+            unique_targets = unique_targets.collect(engine=self._engine)  # type: ignore
         unique_targets = unique_targets[target_name].to_list()
 
         self.tree = self._build_tree(data, feature_names, target_name, unique_targets, depth=0)
@@ -149,7 +150,7 @@ class DecisionTreeClassifier:
         if isinstance(predictions, pl.LazyFrame):
             # Despite the execution plans says there is no streaming, using streaming here significantly
             # increases the performance and decreases the memory food print.
-            predictions = predictions.collect(streaming=True)  # type: ignore
+            predictions = predictions.collect(engine="streaming")  # type: ignore
 
         predictions = predictions["prediction"].to_list()
         return predictions
@@ -184,9 +185,11 @@ class DecisionTreeClassifier:
 
         :return: majority class.
         """
-        majority_class = df.group_by(target_name).len().filter(pl.col("len") == pl.col("len").max()).select(target_name)
+        majority_class = (
+            df.group_by(target_name).len().filter(pl.col("len") == pl.col("len").max()).select(target_name)
+        )
         if isinstance(majority_class, pl.LazyFrame):
-            majority_class = majority_class.collect(streaming=self.streaming)  # type: ignore
+            majority_class = majority_class.collect(engine=self._engine)  # type: ignore
         return majority_class[target_name][0]
 
     def _build_tree(
@@ -236,7 +239,10 @@ class DecisionTreeClassifier:
                 direction: (
                     1.0
                     - pl.sum_horizontal(
-                        [pl.col(f"{direction}_proportion_class_{target_value}") ** 2 for target_value in unique_targets]
+                        [
+                            pl.col(f"{direction}_proportion_class_{target_value}") ** 2
+                            for target_value in unique_targets
+                        ]
                     )
                 ).alias(f"{direction}_criterion")
                 for direction in ["left", "right", "parent"]
@@ -285,7 +291,8 @@ class DecisionTreeClassifier:
                 )
                 .filter(
                     # At least one example available
-                    pl.col("sum_count_examples") > pl.col("cum_sum_count_examples")
+                    pl.col("sum_count_examples")
+                    > pl.col("cum_sum_count_examples")
                 )
                 .select(
                     [
@@ -348,7 +355,7 @@ class DecisionTreeClassifier:
             information_gain_dfs.append(information_gain_df)
 
         if isinstance(information_gain_dfs[0], pl.LazyFrame):
-            information_gain_dfs = pl.collect_all(information_gain_dfs, streaming=self.streaming)  # type: ignore
+            information_gain_dfs = pl.collect_all(information_gain_dfs, engine=self._engine)  # type: ignore
 
         information_gain_dfs = pl.concat(information_gain_dfs, how="vertical_relaxed").sort(
             "information_gain", descending=True
@@ -362,7 +369,7 @@ class DecisionTreeClassifier:
         if information_gain > 0:
             left_mask = data.select(filter=pl.col(best_params["feature"]) <= best_params["feature_value"])  # type: ignore
             if isinstance(left_mask, pl.LazyFrame):
-                left_mask = left_mask.collect(streaming=self.streaming)  # type: ignore
+                left_mask = left_mask.collect(engine=self._engine)  # type: ignore
             left_mask = left_mask["filter"]
 
             # Split data
@@ -375,7 +382,7 @@ class DecisionTreeClassifier:
             if isinstance(data, pl.LazyFrame):
                 target_distribution = (
                     data.select(target_name)
-                    .collect(streaming=self.streaming)[target_name]  # type: ignore
+                    .collect(engine=self._engine)[target_name]  # type: ignore
                     .value_counts()
                     .sort(target_name)["count"]
                     .to_list()

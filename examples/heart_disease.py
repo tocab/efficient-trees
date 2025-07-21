@@ -29,7 +29,7 @@ test_data = data.slice(count_training_data)
 models = [
     DecisionTreeClassifier(max_depth=8, streaming=True, categorical_columns=categorical_columns),
     RandomForestClassifier(
-        seed=42, n_estimators=100, max_depth=8, streaming=True, categorical_columns=categorical_columns
+        seed=42, n_estimators=3, max_depth=8, streaming=True, categorical_columns=categorical_columns
     ),
 ]
 

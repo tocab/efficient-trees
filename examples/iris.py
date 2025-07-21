@@ -33,8 +33,8 @@ for model in models:
         plot_tree(model.tree, "decision_tree_iris.pdf")  # type: ignore
 
     # Predictions and evaluation
-    y_train_pred_pl = model.predict(X_train_pl.iter_rows(named=True))
-    y_test_pred_pl = model.predict(X_test_pl.iter_rows(named=True))
+    y_train_pred_pl = model.predict(X_train_pl.to_dicts())
+    y_test_pred_pl = model.predict(X_test_pl.to_dicts())
 
     # Calculate accuracy scores
     train_accuracy = accuracy_score(y_train_pl, y_train_pred_pl)
