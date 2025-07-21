@@ -16,6 +16,11 @@ from collections import Counter
 
 
 def mode_horizontal(*exprs: pl.Expr) -> pl.Expr:
+    """
+    Compute the mode of the given expressions horizontally (across columns).
+
+    :return: An expression representing the mode of the input expressions.
+    """
     return pl.fold(acc=pl.lit([]), function=lambda acc, x: acc.list.concat(x), exprs=exprs).map_elements(
         lambda vals: Counter(vals).most_common(1)[0][0]
     )
@@ -90,7 +95,7 @@ class RandomForestClassifier:
         # breakpoint()
         lazy_input = isinstance(data, pl.LazyFrame)
         if lazy_input:
-            data = data.collect(engine=self._engine)
+            data = data.collect(engine=self._engine)  # type: ignore
         for _ in range(self.n_estimators):
             # Sample data with replacement
             sampled_data = data.sample(

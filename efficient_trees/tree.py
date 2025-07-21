@@ -185,9 +185,7 @@ class DecisionTreeClassifier:
 
         :return: majority class.
         """
-        majority_class = (
-            df.group_by(target_name).len().filter(pl.col("len") == pl.col("len").max()).select(target_name)
-        )
+        majority_class = df.group_by(target_name).len().filter(pl.col("len") == pl.col("len").max()).select(target_name)
         if isinstance(majority_class, pl.LazyFrame):
             majority_class = majority_class.collect(engine=self._engine)  # type: ignore
         return majority_class[target_name][0]
@@ -239,10 +237,7 @@ class DecisionTreeClassifier:
                 direction: (
                     1.0
                     - pl.sum_horizontal(
-                        [
-                            pl.col(f"{direction}_proportion_class_{target_value}") ** 2
-                            for target_value in unique_targets
-                        ]
+                        [pl.col(f"{direction}_proportion_class_{target_value}") ** 2 for target_value in unique_targets]
                     )
                 ).alias(f"{direction}_criterion")
                 for direction in ["left", "right", "parent"]
@@ -291,8 +286,7 @@ class DecisionTreeClassifier:
                 )
                 .filter(
                     # At least one example available
-                    pl.col("sum_count_examples")
-                    > pl.col("cum_sum_count_examples")
+                    pl.col("sum_count_examples") > pl.col("cum_sum_count_examples")
                 )
                 .select(
                     [
