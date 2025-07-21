@@ -7,7 +7,6 @@ use lazy evaluation and streaming capabilities of Polars.
 
 import pickle
 from collections.abc import Iterable
-from typing import Union
 
 import polars as pl
 
@@ -22,8 +21,8 @@ class DecisionTreeClassifier:
     def __init__(
         self,
         streaming: bool = False,
-        max_depth: int = None,
-        categorical_columns: list[str] = None,
+        max_depth: int | None = None,
+        categorical_columns: list[str] | None = None,
         criterion: Criterion = Criterion.ENTROPY,
     ):
         """
@@ -34,10 +33,18 @@ class DecisionTreeClassifier:
         """
         self.max_depth = max_depth
         self.streaming = streaming
+        self._engine = "streaming" if streaming else "auto"
         self.categorical_columns = categorical_columns
         self.categorical_mappings = None
         self.tree = None
         self.criterion = criterion
+        self.fitted_ = False
+
+    def __repr__(self) -> str:
+        return (
+            f"DecisionTreeClassifier(max_depth={self.max_depth}, streaming={self.streaming}, "
+            f"categorical_columns={self.categorical_columns}, criterion={self.criterion})"
+        )
 
     def save_model(self, path: str) -> None:
         """
@@ -65,7 +72,7 @@ class DecisionTreeClassifier:
             self.tree = loaded["tree"]
             self.categorical_mappings = loaded["categorical_mappings"]
 
-    def apply_categorical_mappings(self, data: Union[pl.DataFrame, pl.LazyFrame]) -> Union[pl.DataFrame, pl.LazyFrame]:
+    def apply_categorical_mappings(self, data: pl.DataFrame | pl.LazyFrame) -> pl.DataFrame | pl.LazyFrame:
         """
         Apply categorical mappings on input frame.
 
@@ -74,10 +81,10 @@ class DecisionTreeClassifier:
         :return: Polars DataFrame or LazyFrame with mapped categorical columns
         """
         return data.with_columns(
-            [pl.col(col).replace(self.categorical_mappings[col]).cast(pl.UInt32) for col in self.categorical_columns]
+            [pl.col(col).replace(self.categorical_mappings[col]).cast(pl.UInt32) for col in self.categorical_columns]  # type: ignore
         )
 
-    def fit(self, data: Union[pl.DataFrame, pl.LazyFrame], target_name: str) -> None:
+    def fit(self, data: pl.DataFrame | pl.LazyFrame, target_name: str) -> None:
         """
         Fit method to train the decision tree.
 
@@ -101,7 +108,7 @@ class DecisionTreeClassifier:
                         .group_by(categorical_column)
                         .agg(pl.col(target_name).mean().alias("avg"))
                         .sort("avg")
-                        .collect(streaming=self.streaming)[categorical_column]
+                        .collect(engine=self._engine)[categorical_column]  # type: ignore
                     )
                 }
 
@@ -110,18 +117,21 @@ class DecisionTreeClassifier:
 
         unique_targets = data.select(target_name).unique()
         if isinstance(unique_targets, pl.LazyFrame):
-            unique_targets = unique_targets.collect(streaming=self.streaming)
+            unique_targets = unique_targets.collect(engine=self._engine)  # type: ignore
         unique_targets = unique_targets[target_name].to_list()
 
         self.tree = self._build_tree(data, feature_names, target_name, unique_targets, depth=0)
+        self.fitted_ = True
 
-    def predict_many(self, data: Union[pl.DataFrame, pl.LazyFrame]) -> list[Union[int, float]]:
+    def predict_many(self, data: pl.DataFrame | pl.LazyFrame) -> list[int | float]:
         """
         Predict method.
 
         :param data: Polars DataFrame or LazyFrame.
         :return: List of predicted target values.
         """
+        if not self.fitted_:
+            raise ValueError("The model has not been fitted yet.")
         if self.categorical_mappings:
             data = self.apply_categorical_mappings(data)
 
@@ -134,24 +144,26 @@ class DecisionTreeClassifier:
                 return temp_data.select(pl.col("temp_prediction_index"), pl.lit(node["value"]).alias("prediction"))
 
         data = data.with_row_index("temp_prediction_index")
-        predictions = _predict_many(self.tree, data).sort("temp_prediction_index").select(pl.col("prediction"))
+        predictions = _predict_many(self.tree, data).sort("temp_prediction_index").select(pl.col("prediction"))  # type: ignore
 
         # Convert predictions to a list
         if isinstance(predictions, pl.LazyFrame):
             # Despite the execution plans says there is no streaming, using streaming here significantly
             # increases the performance and decreases the memory food print.
-            predictions = predictions.collect(streaming=True)
+            predictions = predictions.collect(engine="streaming")  # type: ignore
 
         predictions = predictions["prediction"].to_list()
         return predictions
 
-    def predict(self, data: Iterable[dict]) -> list[Union[int, float]]:
+    def predict(self, data: Iterable[dict]) -> list[int | float]:
         """
         Predict method.
 
         :param data: list of dicts
         :return: List of predicted target values.
         """
+        if not self.fitted_:
+            raise ValueError("The model has not been fitted yet.")
 
         def _predict_sample(node, sample):
             if node["type"] == "leaf":
@@ -164,7 +176,7 @@ class DecisionTreeClassifier:
         predictions = [_predict_sample(self.tree, sample) for sample in data]
         return predictions
 
-    def get_majority_class(self, df: Union[pl.DataFrame, pl.LazyFrame], target_name: str) -> str:
+    def get_majority_class(self, df: pl.DataFrame | pl.LazyFrame, target_name: str) -> str:
         """
         Returns the majority class of a dataframe.
 
@@ -175,12 +187,12 @@ class DecisionTreeClassifier:
         """
         majority_class = df.group_by(target_name).len().filter(pl.col("len") == pl.col("len").max()).select(target_name)
         if isinstance(majority_class, pl.LazyFrame):
-            majority_class = majority_class.collect(streaming=self.streaming)
+            majority_class = majority_class.collect(engine=self._engine)  # type: ignore
         return majority_class[target_name][0]
 
     def _build_tree(
         self,
-        data: Union[pl.DataFrame, pl.LazyFrame],
+        data: pl.DataFrame | pl.LazyFrame,
         feature_names: list[str],
         target_name: str,
         unique_targets: list[int],
@@ -304,9 +316,9 @@ class DecisionTreeClassifier:
                     ]
                 )
                 .select(
-                    criterion_expressions["left"],
-                    criterion_expressions["right"],
-                    criterion_expressions["parent"],
+                    criterion_expressions["left"],  # type: ignore
+                    criterion_expressions["right"],  # type: ignore
+                    criterion_expressions["parent"],  # type: ignore
                     # From previous select
                     pl.col("cum_sum_count_examples"),
                     pl.col("sum_count_examples"),
@@ -337,7 +349,7 @@ class DecisionTreeClassifier:
             information_gain_dfs.append(information_gain_df)
 
         if isinstance(information_gain_dfs[0], pl.LazyFrame):
-            information_gain_dfs = pl.collect_all(information_gain_dfs, streaming=self.streaming)
+            information_gain_dfs = pl.collect_all(information_gain_dfs, engine=self._engine)  # type: ignore
 
         information_gain_dfs = pl.concat(information_gain_dfs, how="vertical_relaxed").sort(
             "information_gain", descending=True
@@ -349,9 +361,9 @@ class DecisionTreeClassifier:
             information_gain = best_params["information_gain"]
 
         if information_gain > 0:
-            left_mask = data.select(filter=pl.col(best_params["feature"]) <= best_params["feature_value"])
+            left_mask = data.select(filter=pl.col(best_params["feature"]) <= best_params["feature_value"])  # type: ignore
             if isinstance(left_mask, pl.LazyFrame):
-                left_mask = left_mask.collect(streaming=self.streaming)
+                left_mask = left_mask.collect(engine=self._engine)  # type: ignore
             left_mask = left_mask["filter"]
 
             # Split data
@@ -364,7 +376,7 @@ class DecisionTreeClassifier:
             if isinstance(data, pl.LazyFrame):
                 target_distribution = (
                     data.select(target_name)
-                    .collect(streaming=self.streaming)[target_name]
+                    .collect(engine=self._engine)[target_name]  # type: ignore
                     .value_counts()
                     .sort(target_name)["count"]
                     .to_list()
@@ -374,10 +386,10 @@ class DecisionTreeClassifier:
 
             return {
                 "type": "node",
-                "feature": best_params["feature"],
-                "threshold": best_params["feature_value"],
-                "information_gain": best_params["information_gain"],
-                "criterion_value": best_params["parent_criterion"],
+                "feature": best_params["feature"],  # type: ignore
+                "threshold": best_params["feature_value"],  # type: ignore
+                "information_gain": best_params["information_gain"],  # type: ignore
+                "criterion_value": best_params["parent_criterion"],  # type: ignore
                 "target_distribution": target_distribution,
                 "left": left_subtree,
                 "right": right_subtree,
