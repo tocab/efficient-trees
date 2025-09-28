@@ -15,7 +15,7 @@ from efficient_trees.tree import DecisionTreeClassifier as ETDecisionTreeClassif
 
 # Wrapper to measure memory usage over time
 def measure_memory_usage(func, queue, *args, **kwargs):
-    mem_usage = memory_usage((func, args, kwargs))
+    mem_usage = memory_usage((func, args, kwargs)) # type: ignore
     queue.put(mem_usage)
 
 
@@ -40,7 +40,7 @@ def train_efficient_tree(data_path):
     data = pl.scan_parquet(data_path)
     columns_to_exclude = ["customer_ID", "__index_level_0__", "S_2", "D_63", "D_64"]
     target_name = "target"
-    data = data.drop(columns_to_exclude).fill_null(0.0).collect(streaming=True)
+    data = data.drop(columns_to_exclude).fill_null(0.0).collect(streaming=True) # type: ignore
     tree = ETDecisionTreeClassifier(max_depth=4)
     tree.fit(data, target_name)
 
@@ -56,8 +56,8 @@ def train_lightgbm(data_path):
     # - cffi needs to be installed
     # Internally, lightgbm will try to import these packages and fail silently if they are not available.
     lgbm_dataset = lgbm.Dataset(
-        data=data.drop(columns_to_exclude + ["target"]).collect(streaming=True).to_arrow(),
-        label=data.select("target").collect(streaming=True)["target"].to_arrow(),
+        data=data.drop(columns_to_exclude + ["target"]).collect(streaming=True).to_arrow(), # type: ignore
+        label=data.select("target").collect(streaming=True)["target"].to_arrow(), # type: ignore
         free_raw_data=True,
     )
     params = {"objective": "binary", "max_depth": 4}

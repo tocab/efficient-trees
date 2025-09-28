@@ -12,14 +12,14 @@ from efficient_trees.tree import DecisionTreeClassifier
 @pytest.fixture
 def data(request):
     iris = load_iris()
-    X, y = iris.data, iris.target
+    X, y = iris.data, iris.target # type: ignore
 
     # Split into training and test sets
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
 
     # data
-    df_train = pl.DataFrame(X_train, schema=iris.feature_names).with_columns(target=pl.Series(y_train))
-    df_test = pl.DataFrame(X_test, schema=iris.feature_names).with_columns(target=pl.Series(y_test))
+    df_train = pl.DataFrame(X_train, schema=iris.feature_names).with_columns(target=pl.Series(y_train)) # type: ignore
+    df_test = pl.DataFrame(X_test, schema=iris.feature_names).with_columns(target=pl.Series(y_test)) # type: ignore
     if request.param == "str":
         df_train = df_train.with_columns(
             pl.col("target").cast(pl.String, strict=False).replace({"0": "setosa", "1": "versicolor", "2": "virginica"})
